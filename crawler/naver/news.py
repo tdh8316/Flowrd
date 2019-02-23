@@ -1,64 +1,55 @@
 import re
-import urllib.request as request
+from urllib import request
 
-from bs4 import BeautifulSoup, Tag
+from bs4 import BeautifulSoup
 
+from crawler import naver
+from crawler.naver import parser
 from utils.normalize import normalize_string
 
 
 class NaverNews(object):
 
-    def __init__(self, url: str):
-        self.response = request.urlopen(url)
-        self.soup = None
-        if self.response.status == 200:
-            self.soup = BeautifulSoup(self.response.read(), "lxml", from_encoding="UTF-8")
+    def __init__(self):
+        self._titles: list = []
+        self._links: list = []
+        self.site = BeautifulSoup(
+            request.urlopen("https://news.naver.com/main/home.nhn").read(),
+            "lxml",
+            from_encoding="UTF-8"
+        )
 
-    def get_body(self) -> str:
-        article: str = ''
-        for body in self.soup.find_all("div", {"id": "articleBodyContents"}):
-            article = ''.join(body.find_all(text=True))
+        self._parse_page()
 
-        return normalize_string(article)
+        self._links = list(set(self._links))
 
+    def _parse_page(self):
+        for item in self.site.find_all("div", {"class": "newsnow_tx_inner"}):
+            self._titles.append(normalize_string(item.text))
+            self._links.append(item.find('a')["href"])
 
-def list_naver_news() -> tuple:
-    """
-    [0] = titles: str, [1] = links: str
-    :return:
-    """
-    article_list = []
-    address_list = []
+        for item in self.site.select("div.mtype_list_wide"):
+            for arts in item.find_all("li"):
+                self._titles.append(normalize_string(arts.text))
+                self._links.append(item.find('a')["href"])
 
-    bs = BeautifulSoup(
-        request.urlopen("https://news.naver.com/main/home.nhn").read(),
-        "lxml",
-        from_encoding="UTF-8")
+        for item in self.site.select("div.com_list"):
+            for arts in (item.find_all("li")):
+                self._titles.append(normalize_string(arts.text))
+                self._links.append(item.find('a')["href"])
 
-    for item in bs.find_all("div", {"class": "newsnow_tx_inner"}):
-        article_list.append(normalize_string(item.text))
-        item: Tag
-        address_list.append(item.find('a')["href"])
+        for item in self.site.find_all("a", {"href": re.compile(r'/main/ranking/read\.nhn\?.+')}):
+            self._titles.append(normalize_string(item.text))
+            self._links.append(item["href"])
 
-    for item in bs.select("div.mtype_list_wide"):
-        for arts in item.find_all("li"):
-            article_list.append(normalize_string(arts.text))
-            address_list.append(item.find('a')["href"])
+        for i in range(len(self._links)):
+            if not self._links[i].startswith("https://"):
+                self._links[i] = "https://news.naver.com/" + self._links[i]
 
-    for item in bs.select("div.com_list"):
-        for arts in (item.find_all("li")):
-            article_list.append(normalize_string(arts.text))
-            address_list.append(item.find('a')["href"])
+    def get_article_body(self) -> str:
+        for link in self._links:
+            yield naver.parser.parse_body(link)
 
-    for item in bs.find_all("a", {"href": re.compile(r'/main/ranking/read\.nhn\?.+')}):
-        article_list.append(normalize_string(item.text))
-        address_list.append(item["href"])
-
-    for i in range(len(address_list)):
-        if not address_list[i].startswith("https://"):
-            address_list[i] = "https://news.naver.com/" + address_list[i]
-
-    return (
-        tuple(set(article_list)),
-        tuple(set(address_list))
-    )
+    @property
+    def titles(self) -> tuple:
+        return tuple(set(self._titles))
