@@ -4,8 +4,16 @@ import time
 from multiprocessing import Process
 
 import matplotlib.pyplot as plt
+import wordcloud
 
 from crawler import naver, daum
+
+img = wordcloud.WordCloud(
+    font_path="bin/nanumbarunpen.ttf",
+    width=1200,
+    height=800,
+    background_color="white"
+)
 
 
 def main():
@@ -19,30 +27,18 @@ def main():
     process_naver.join()
     process_daum.join()
 
-    import wordcloud
-
-    naver_img = wordcloud.WordCloud(
-        font_path="bin/nanumbarunpen.ttf",
-        width=1200,
-        height=800,
-        background_color="white"
-    ).generate_from_frequencies(json.loads(open("model/naver.json", 'r', encoding="UTF-8").read()))
+    img.generate_from_frequencies(json.loads(open("model/naver.json", 'r', encoding="UTF-8").read()))
 
     plt.figure(figsize=(16, 8))
     plt.axis("off")
-    plt.imshow(naver_img)
+    plt.imshow(img)
     plt.savefig("naver.png")
 
-    naver_img = wordcloud.WordCloud(
-        font_path="bin/nanumbarunpen.ttf",
-        width=1200,
-        height=800,
-        background_color="white"
-    ).generate_from_frequencies(json.loads(open("model/daum.json", 'r', encoding="UTF-8").read()))
+    img.generate_from_frequencies(json.loads(open("model/daum.json", 'r', encoding="UTF-8").read()))
 
     plt.figure(figsize=(16, 8))
     plt.axis("off")
-    plt.imshow(naver_img)
+    plt.imshow(img)
     plt.savefig("daum.png")
 
     print(time.time() - start_time)
