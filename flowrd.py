@@ -41,11 +41,11 @@ def main():
     plt.imshow(img)
     plt.savefig("daum.png")
 
-    print(time.time() - start_time)
+    print("Completed in %.2fs" % (time.time() - start_time))
 
 
 if __name__ == '__main__':
     if not os.path.isdir("./model/"):
         os.mkdir(path="model", mode=0o777)
-
+    print("Generating...")
     main()
